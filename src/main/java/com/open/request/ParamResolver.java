@@ -1,0 +1,177 @@
+package com.open.request;
+
+import com.open.request.annotation.Headers;
+import com.open.request.annotation.Param;
+import com.open.request.annotation.RequestForm;
+import com.open.request.annotation.RequestJson;
+import com.open.request.json.Json;
+import com.open.request.utils.HeadersUtil;
+
+import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.net.URLEncoder;
+import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+public class ParamResolver {
+    private final SortedMap<Integer, String> names;
+    private boolean hasParamsAnnotation;
+    private boolean hasRequestFormAnnotation;
+    private boolean hasRequestJsonAnnotation;
+    private boolean hasHeadersAnnotation;
+    private static final Set<Class<?>> WRAPPER_TYPES = Set.of(
+            Boolean.class, Byte.class, Character.class, Double.class,
+            Float.class, Integer.class, Long.class, Short.class
+    );
+
+    public ParamResolver(Method method) {
+//        Class<?>[] parameterTypes = method.getParameterTypes();
+        Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+        SortedMap<Integer, String> map = new TreeMap<>();
+        int paramCount = parameterAnnotations.length;
+        Parameter[] parameters = method.getParameters();
+        String[] parameterNames = new String[parameters.length];
+        for (int i = 0; i < paramCount; i++) {
+            parameterNames[i]=parameters[i].getName();
+        }
+        String name;
+        for (int paramIndex = 0; paramIndex < paramCount; paramIndex++) {
+            for (Annotation annotation : parameterAnnotations[paramIndex]) {
+                if (annotation instanceof RequestForm) {
+                    hasRequestFormAnnotation = true;
+                    map.put(-1, String.valueOf(paramIndex));
+                    break;
+                } else if (annotation instanceof RequestJson) {
+                    hasRequestJsonAnnotation = true;
+                    map.put(-1, String.valueOf(paramIndex));
+                    break;
+                } else if (annotation instanceof Headers) {
+                    hasHeadersAnnotation=true;
+                    map.put(-2, String.valueOf(paramIndex));
+                } else if (annotation instanceof Param) {
+                    name = ((Param) annotation).name();
+                    if ("".equals(name)) {
+                        name=parameterNames[paramIndex];
+                    }
+                    hasParamsAnnotation = true;
+                    map.put(paramIndex,name);
+                    break;
+                }
+            }
+        }
+        names = Collections.unmodifiableSortedMap(map);
+    }
+
+    public String[] getNames() {
+        return names.values().toArray(new String[0]);
+    }
+
+    public Integer[] getParamIndexList() {
+        return names.keySet().toArray(new Integer[0]);
+    }
+
+    public String urlBuild(Object[] args) {
+        if (!hasParamsAnnotation) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("?");
+        Integer[] paramIndexList = this.getParamIndexList();
+        Arrays.stream(paramIndexList).filter(paramIndex -> paramIndex > -1).forEach(paramIndex -> {
+            String s = names.get(paramIndex);
+            Object arg = args[paramIndex];
+            Class<?> aClass = arg.getClass();
+            if (aClass.isArray()) {
+                throw new RuntimeException("Param注解不支持数组");
+            }
+            if (arg instanceof Collection) {
+                throw new RuntimeException("Param注解不支持集合");
+            }
+            if (WRAPPER_TYPES.contains(aClass)) {
+                sb.append(s);
+                sb.append("=");
+                sb.append(URLEncoder.encode(String.valueOf(arg), StandardCharsets.UTF_8));
+            } else if (aClass.isPrimitive()) {
+                sb.append(s);
+                sb.append("=");
+                sb.append(URLEncoder.encode(String.valueOf(arg), StandardCharsets.UTF_8));
+            } else {
+                try {
+                    Field[] declaredFields = aClass.getDeclaredFields();
+                    MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(aClass, MethodHandles.lookup());
+                    for (Field field : declaredFields) {
+                        MethodHandle methodHandle = lookup.unreflectGetter(field).bindTo(arg);
+                        Object invoke = methodHandle.invoke();
+                        if (invoke != null) {
+                            sb.append(field.getName());
+                            sb.append("=");
+                            sb.append(URLEncoder.encode(String.valueOf(invoke), StandardCharsets.UTF_8));
+                            sb.append("&");
+                        }
+                    }
+                } catch (Throwable e) {
+                    throw new RuntimeException(e.getMessage(), e);
+                }
+            }
+        });
+        sb.delete(sb.length() - 1, sb.length());
+        return sb.toString();
+    }
+
+    public HttpRequest.BodyPublisher bodyBuild(Object[] args) {
+        String s = names.get(-1);
+        int paramIndex = Integer.parseInt(s);
+        Object arg = args[paramIndex];
+        Class<?> aClass = arg.getClass();
+        if (hasRequestFormAnnotation) {
+            StringBuilder sb = new StringBuilder();
+            try {
+                Field[] declaredFields = aClass.getDeclaredFields();
+                MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(aClass, MethodHandles.lookup());
+                for (Field field : declaredFields) {
+                    MethodHandle methodHandle = lookup.unreflectGetter(field).bindTo(arg);
+                    Object invoke = methodHandle.invoke();
+                    if (invoke != null) {
+                        sb.append(field.getName());
+                        sb.append("=");
+                        sb.append(URLEncoder.encode(String.valueOf(invoke), StandardCharsets.UTF_8));
+                        sb.append("&");
+                    }
+                }
+            } catch (Throwable throwable) {
+                throw new RuntimeException(throwable.getMessage(), throwable);
+            }
+            sb.delete(sb.length() - 1, sb.length());
+            return HttpRequest.BodyPublishers.ofString(sb.toString());
+        } else if (hasRequestJsonAnnotation) {
+            if (arg instanceof String body) {
+                return HttpRequest.BodyPublishers.ofString(body);
+            } else if (arg instanceof byte[] body) {
+                return HttpRequest.BodyPublishers.ofByteArray(body);
+            }else {
+                String value = Json.toJSONString(arg);
+                return HttpRequest.BodyPublishers.ofString(String.valueOf(value));
+            }
+        }
+        return HttpRequest.BodyPublishers.noBody();
+
+    }
+    public HeadersUtil HeadersBuild(Object[] args) {
+        if (!hasHeadersAnnotation) {
+            return null;
+        }
+        String s = names.get(-2);
+        int paramIndex = Integer.parseInt(s);
+        Object arg = args[paramIndex];
+        if (arg instanceof HeadersUtil headersUtil){
+            return headersUtil;
+        }else {
+            throw new RuntimeException("Headers注解需要放在HeadersUtil对象上使用");
+        }
+    }
+}
