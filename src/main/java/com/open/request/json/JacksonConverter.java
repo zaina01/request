@@ -1,7 +1,6 @@
 package com.open.request.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -28,7 +27,7 @@ public class JacksonConverter implements JsonConverter{
     @Override
     public <T> List<T> parseArray(String text, Class<T> clazz) {
         try {
-            return objectMapper.readValue(text, new TypeReference<List<T>>() {});
+            return objectMapper.readValue(text,objectMapper.getTypeFactory().constructCollectionType(List.class, clazz));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -41,5 +40,10 @@ public class JacksonConverter implements JsonConverter{
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void clearCaches() {
+        objectMapper.clearCaches();
     }
 }

@@ -8,4 +8,5 @@ public interface JsonConverter {
     <T> List<T> parseArray(String text, Class<T> clazz);
 
     String toJSONString(Object object);
+    void clearCaches();
 }

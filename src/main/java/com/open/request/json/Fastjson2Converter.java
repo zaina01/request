@@ -20,4 +20,9 @@ public class Fastjson2Converter implements JsonConverter{
     public String toJSONString(Object object) {
         return JSON.toJSONString(object);
     }
+
+    @Override
+    public void clearCaches() {
+
+    }
 }

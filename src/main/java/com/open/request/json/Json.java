@@ -48,4 +48,7 @@ public class Json {
     public static  String toJSONString(Object object){
         return converter.toJSONString(object);
     }
+    public static  void clearCaches(){
+        converter.clearCaches();
+    }
 }
