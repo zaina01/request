@@ -1,12 +1,12 @@
 package com.open.request;
 
-import com.open.request.annotation.Headers;
-import com.open.request.annotation.Param;
-import com.open.request.annotation.RequestForm;
-import com.open.request.annotation.RequestJson;
+import com.open.request.annotation.*;
 import com.open.request.json.Json;
 import com.open.request.utils.HeadersUtil;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -16,14 +16,16 @@ import java.lang.reflect.Parameter;
 import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.*;
 
 public class ParamResolver {
     private final SortedMap<Integer, String> names;
     private boolean hasParamsAnnotation;
     private boolean hasRequestFormAnnotation;
-    private boolean hasRequestJsonAnnotation;
+    private boolean hasRequestBodyAnnotation;
     private boolean hasHeadersAnnotation;
+    private boolean hasPathVariableAnnotation;
     private static final Set<Class<?>> WRAPPER_TYPES = Set.of(
             Boolean.class, Byte.class, Character.class, Double.class,
             Float.class, Integer.class, Long.class, Short.class
@@ -46,13 +48,14 @@ public class ParamResolver {
                     hasRequestFormAnnotation = true;
                     map.put(-1, String.valueOf(paramIndex));
                     break;
-                } else if (annotation instanceof RequestJson) {
-                    hasRequestJsonAnnotation = true;
+                } else if (annotation instanceof RequestBody) {
+                    hasRequestBodyAnnotation = true;
                     map.put(-1, String.valueOf(paramIndex));
                     break;
                 } else if (annotation instanceof Headers) {
                     hasHeadersAnnotation=true;
                     map.put(-2, String.valueOf(paramIndex));
+                    break;
                 } else if (annotation instanceof Param) {
                     name = ((Param) annotation).name();
                     if ("".equals(name)) {
@@ -61,6 +64,9 @@ public class ParamResolver {
                     hasParamsAnnotation = true;
                     map.put(paramIndex,name);
                     break;
+                } else if (annotation instanceof PathVariable) {
+                    hasPathVariableAnnotation=true;
+                    //todo 等待实现
                 }
             }
         }
@@ -96,10 +102,12 @@ public class ParamResolver {
                 sb.append(s);
                 sb.append("=");
                 sb.append(URLEncoder.encode(String.valueOf(arg), StandardCharsets.UTF_8));
-            } else if (aClass.isPrimitive()) {
+                sb.append("&");
+            } else if (aClass.isPrimitive() || aClass.isAssignableFrom(String.class)) {
                 sb.append(s);
                 sb.append("=");
                 sb.append(URLEncoder.encode(String.valueOf(arg), StandardCharsets.UTF_8));
+                sb.append("&");
             } else {
                 try {
                     Field[] declaredFields = aClass.getDeclaredFields();
@@ -119,7 +127,9 @@ public class ParamResolver {
                 }
             }
         });
-        sb.delete(sb.length() - 1, sb.length());
+        if (sb.charAt(sb.length() - 1) == '&') {
+            sb.delete(sb.length() - 1, sb.length());
+        }
         return sb.toString();
     }
 
@@ -148,18 +158,30 @@ public class ParamResolver {
             }
             sb.delete(sb.length() - 1, sb.length());
             return HttpRequest.BodyPublishers.ofString(sb.toString());
-        } else if (hasRequestJsonAnnotation) {
+        } else if (hasRequestBodyAnnotation) {
             if (arg instanceof String body) {
                 return HttpRequest.BodyPublishers.ofString(body);
             } else if (arg instanceof byte[] body) {
                 return HttpRequest.BodyPublishers.ofByteArray(body);
-            }else {
+            } else if (arg instanceof File file){
+                try {
+                    return HttpRequest.BodyPublishers.ofFile(file.toPath());
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+            }else if (arg instanceof Path path){
+                try {
+                    return HttpRequest.BodyPublishers.ofFile(path);
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            else {
                 String value = Json.toJSONString(arg);
                 return HttpRequest.BodyPublishers.ofString(String.valueOf(value));
             }
         }
         return HttpRequest.BodyPublishers.noBody();
-
     }
     public HeadersUtil HeadersBuild(Object[] args) {
         if (!hasHeadersAnnotation) {

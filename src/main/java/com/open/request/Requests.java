@@ -6,10 +6,14 @@ import com.open.request.json.Json;
 import com.open.request.proxy.RequestHttpMethod;
 import com.open.request.utils.HeadersUtil;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.List;
 
 public class Requests {
     private final Configuration configuration;
@@ -44,7 +48,7 @@ public class Requests {
 //        HttpResponse.BodyHandler<?> bodyHandler = buildBodyHandler(methodSignature.getActualType());
         ResultHandler<?> resultHandler = configuration.getResultHandler(httpStatement.getResultHandlerClass());
         if (httpStatement.isAsync()){
-            HttpResponse.BodyHandler<?> bodyHandler = buildBodyHandler(methodSignature.getActualType());
+            HttpResponse.BodyHandler<?> bodyHandler = buildBodyHandler((Class<?>)methodSignature.getActualType());
             return Executor.executeAsync(httpStatement,httpRequest,bodyHandler);
         }
         HttpResponse<?> execute = Executor.execute(httpStatement, httpRequest, resultHandler.bodyHandler());
@@ -56,27 +60,57 @@ public class Requests {
         if (result == null) {
             return null;
         }
-        boolean returnsMany = methodSignature.isReturnsMany();
-        Class<?> actualType = methodSignature.getActualType();
+        Class<?> resultClass = result.getClass();
         Class<?> returnType = methodSignature.getReturnType();
-        if (result.getClass().isAssignableFrom(returnType)) {
+        Type genericReturnType = methodSignature.getGenericReturnType();
+        if (resultClass.isAssignableFrom(returnType)){
             return result;
         }
-
         if (result instanceof byte[] bytes){
             result=new String(bytes, StandardCharsets.UTF_8);
         }
-        if (result.getClass().isAssignableFrom(returnType)) {
-            return result;
-        }
-        if (result instanceof String string) {
-            if (returnsMany) {
-
-                return Json.parseArray(string, actualType);
-            } else {
-                return Json.parseObject(string, returnType);
+        if (result instanceof String string){
+            if (returnType.isAssignableFrom(String.class)){
+                return result;
+            }
+            switch (genericReturnType){
+                case ParameterizedType parameterizedType-> {
+//                    Class<?> rawType =(Class<?>) parameterizedType.getRawType();
+//                    if (rawType.isAssignableFrom(Collection.class)||rawType.isAssignableFrom(List.class)){
+//                        return Json.parseArray(string, rawType);
+//                    }
+                    return Json.parseObject(string,parameterizedType);
+                }
+                case Class<?> clazz-> {
+                    return Json.parseObject(string,clazz);
+                }
+                default -> {
+                    return Json.parseObject(string,returnType);
+                }
             }
         }
+
+
+
+
+//        if (result.getClass().isAssignableFrom(returnType)) {
+//            return result;
+//        }
+//
+//        if (result instanceof byte[] bytes){
+//            result=new String(bytes, StandardCharsets.UTF_8);
+//        }
+//        if (result.getClass().isAssignableFrom(returnType)) {
+//            return result;
+//        }
+//        if (result instanceof String string) {
+//            if (returnsMany) {
+//
+//                return Json.parseArray(string, actualType);
+//            } else {
+//                return Json.parseObject(string, returnType);
+//            }
+//        }
 
         throw new RuntimeException("转换结果失败 需要的类型" + returnType + ",提供的result类型" + result.getClass());
     }

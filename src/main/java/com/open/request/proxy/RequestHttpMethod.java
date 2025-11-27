@@ -18,24 +18,25 @@ public class RequestHttpMethod {
 
     private final MethodSignature methodSignature;
 
-    private final HttpCommand  command;
+    private final HttpCommand command;
 
     public RequestHttpMethod(Class<?> httpInterface, Method method, Configuration config) {
         this.methodSignature = new MethodSignature(httpInterface, method);
-        this.command=new HttpCommand(config,httpInterface,method);
+        this.command = new HttpCommand(config, httpInterface, method);
     }
 
     public Object execute(Requests requests, Object[] args) {
         Object result;
-        switch(command.getType()){
-            case Post -> result=requests.post(command.getName(),methodSignature,args);
-            case Put -> result=requests.put(command.getName(),methodSignature,args);
-            case Get -> result=requests.get(command.getName(),methodSignature,args);
-            case Delete -> result=requests.delete(command.getName(),methodSignature,args);
+        switch (command.getType()) {
+            case Post -> result = requests.post(command.getName(), methodSignature, args);
+            case Put -> result = requests.put(command.getName(), methodSignature, args);
+            case Get -> result = requests.get(command.getName(), methodSignature, args);
+            case Delete -> result = requests.delete(command.getName(), methodSignature, args);
             default -> throw new RuntimeException("Unknown execution method for: " + command.getName());
         }
         return result;
     }
+
     public static class HttpCommand {
         private final String name;
         private final RequestType type;
@@ -76,83 +77,86 @@ public class RequestHttpMethod {
     }
 
     public static class MethodSignature {
-        private final boolean returnsMany;
+        //        private final boolean returnsMany;
+        private final Type genericReturnType;
         private final Class<?> returnType;
         private final Class<?> actualType;
         private final ParamResolver paramResolver;
 
         public MethodSignature(Class<?> mapperInterface, Method method) {
             Type type = method.getGenericReturnType();
+            this.genericReturnType=type;
             RequestAsync annotation = method.getAnnotation(RequestAsync.class);
-            if (type instanceof TypeVariable) {
-                throw new RuntimeException("不支持泛型参数符号");
-            } else if (type instanceof ParameterizedType parameterizedType) {
-                Type rawType = parameterizedType.getRawType();
-                if (annotation!=null && !((Class<?>) rawType).isAssignableFrom(CompletableFuture.class)){
-                    throw  new RuntimeException("异步方法返回值只支持CompletableFuture类型");
-                }
-                if (annotation==null && !((Class<?>) rawType).isAssignableFrom(List.class)) {
-                    throw new RuntimeException("返回值只支持List类型和对象类型");
-                }
-                Type[] actualTypeArguments=null;
-                if (((Class<?>) rawType).isAssignableFrom(CompletableFuture.class)){
-                    Type actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
-                    if (actualTypeArgument instanceof ParameterizedType typeArgument) {
-                        if (!((Class<?>)typeArgument.getRawType()).isAssignableFrom(HttpResponse.class)) {
-                            throw new RuntimeException("CompletableFuture类型的泛型必须是HttpResponse");
-                        }
-                        actualTypeArguments = typeArgument.getActualTypeArguments();
-                    }else {
-                        throw new RuntimeException("CompletableFuture类型的泛型必须是HttpResponse");
+            if (annotation != null) {
+                if (type instanceof ParameterizedType parameterizedType) {
+                    Type rawType = parameterizedType.getRawType();
+                    if (!((Class<?>) rawType).isAssignableFrom(CompletableFuture.class)) {
+                        throw new RuntimeException("异步方法返回值只支持CompletableFuture类型");
                     }
-
-                }else {
-                    actualTypeArguments = parameterizedType.getActualTypeArguments();
+                    Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
+                    if (actualTypeArguments.length != 1) {
+                        throw new RuntimeException("异步方法返回值CompletableFuture类型的泛型必须为HttpResponse类型");
+                    }
+                    if (!(actualTypeArguments[0] instanceof ParameterizedType) || ((Class<?>) ((ParameterizedType) actualTypeArguments[0]).getRawType()).isAssignableFrom(HttpResponse.class)) {
+                        throw new RuntimeException("异步方法返回值CompletableFuture类型的泛型HttpResponse类型也需要指定泛型");
+                    }
+                    if (((ParameterizedType) actualTypeArguments[0]).getActualTypeArguments()[0] instanceof Class<?> classType) {
+                        this.returnType = (Class<?>) parameterizedType.getRawType();
+                        this.actualType = classType;
+                    }
+                    throw new RuntimeException("异步方法返回值需要是CompletableFuture<HttpResponse<此处填写类型自定义类型处理器bodyHandler返回的泛型或填写默认String|byte[]>>类型");
+                } else {
+                    throw new RuntimeException("异步方法返回值只支持CompletableFuture类型");
                 }
-
-                if (actualTypeArguments.length != 1) {
-                    throw new RuntimeException("获取到的泛型参数不为1个请检查是否是List类型");
-                }
-                this.returnType = (Class<?>) parameterizedType.getRawType();
-                this.actualType = (Class<?>) actualTypeArguments[0];
-            } else if (type instanceof GenericArrayType) {
-                throw new RuntimeException("不支持泛型数组");
-            } else if (type instanceof Class<?>) {
-                this.returnType = (Class<?>) type;
-                this.actualType = (Class<?>) type;
             } else {
-                this.returnType = method.getReturnType();
-                this.actualType = method.getReturnType();
+                switch (type) {
+                    case TypeVariable _ -> throw new RuntimeException("不支持泛型参数符号TypeVariable");
+                    case GenericArrayType _ -> throw new RuntimeException("不支持泛型数组");
+                    case ParameterizedType parameterizedType -> {
+                        Type rawType = parameterizedType.getRawType();
+                        this.returnType=(Class<?>) rawType;
+                        this.actualType = (Class<?>) rawType;
+                    }
+                    case Class<?> clazz->{
+                        this.returnType=clazz;
+                        this.actualType = clazz;
+                    }
+                    default -> {
+                        this.returnType = method.getReturnType();
+                        this.actualType = method.getReturnType();
+                    }
+                }
             }
-            this.returnsMany = List.class.isAssignableFrom(this.returnType);
             this.paramResolver = new ParamResolver(method);
         }
 
-        public boolean isReturnsMany() {
-            return returnsMany;
-        }
-
-        public Class<?> getReturnType() {
-            return returnType;
-        }
-
-        public Class<?> getActualType() {
-            return actualType;
-        }
 
         public ParamResolver getParamResolver() {
             return paramResolver;
         }
 
-        public String convertArgsToHttpParam(Object[] args){
+        public String convertArgsToHttpParam(Object[] args) {
             return paramResolver.urlBuild(args);
         }
 
-        public HttpRequest.BodyPublisher convertArgsToHttpBodyPublisher(Object[] args){
+        public HttpRequest.BodyPublisher convertArgsToHttpBodyPublisher(Object[] args) {
             return paramResolver.bodyBuild(args);
         }
-        public HeadersUtil convertArgsToHttpHeaders(Object[] args){
+
+        public HeadersUtil convertArgsToHttpHeaders(Object[] args) {
             return paramResolver.HeadersBuild(args);
+        }
+
+        public  Class<?> getReturnType() {
+            return returnType;
+        }
+
+        public  Class<?> getActualType() {
+            return actualType;
+        }
+
+        public Type getGenericReturnType() {
+            return genericReturnType;
         }
     }
 }

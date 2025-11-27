@@ -6,10 +6,14 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TestResultHandler {
     @Test
@@ -27,7 +31,16 @@ public class TestResultHandler {
         Configuration config = new Configuration();
         config.addRequest(TestHttp.class);
         TestHttp request = config.getRequest(TestHttp.class);
-        String user = request.get();
+        List<String> user = request.get("1","2");
         System.out.println("user:"+user);
+    }
+    @Test
+    void testType(){
+        List<String> strings=new ArrayList<>();
+        Method declaredMethod = TestHttp.class.getDeclaredMethods()[0];
+        Type genericReturnType = declaredMethod.getGenericReturnType();
+        System.out.println(genericReturnType);
+        Class<?> aClass = strings.getClass();
+        System.out.println(aClass);
     }
 }

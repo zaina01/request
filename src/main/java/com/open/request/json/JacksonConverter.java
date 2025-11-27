@@ -1,9 +1,11 @@
 package com.open.request.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import java.lang.reflect.Type;
 import java.util.List;
 
 public class JacksonConverter implements JsonConverter{
@@ -12,6 +14,7 @@ public class JacksonConverter implements JsonConverter{
         try {
             Class.forName("com.fasterxml.jackson.datatype.jsr310.JavaTimeModule");
             objectMapper.registerModule(new JavaTimeModule());
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         }catch (ClassNotFoundException _) {
         }
     }
@@ -19,6 +22,15 @@ public class JacksonConverter implements JsonConverter{
     public <T> T parseObject(String text, Class<T> clazz) {
         try {
             return objectMapper.readValue(text,clazz);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public <T> T parseObject(String text, Type type) {
+        try {
+            return objectMapper.readValue(text,objectMapper.getTypeFactory().constructType(type));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

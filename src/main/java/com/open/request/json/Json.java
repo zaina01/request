@@ -1,5 +1,6 @@
 package com.open.request.json;
 
+import java.lang.reflect.Type;
 import java.util.List;
 
 public class Json {
@@ -8,15 +9,6 @@ public class Json {
     private static boolean checkFastjson2Class(){
         try {
             Class.forName("com.alibaba.fastjson2.JSON");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
-
-    private static boolean checkFastjsonClass(){
-        try {
-            Class.forName("com.alibaba.fastjson.JSON");
             return true;
         } catch (ClassNotFoundException e) {
             return false;
@@ -34,11 +26,15 @@ public class Json {
 
 
     static {
-        converter=checkFastjson2Class() ? new Fastjson2Converter() : checkFastjsonClass() ? new FastjsonConverter() : checkJacksonClass() ? new JacksonConverter() : null;
+        converter=checkFastjson2Class() ? new Fastjson2Converter() : checkJacksonClass() ? new JacksonConverter() : null;
     }
 
     public static  <T> T parseObject(String text, Class<T> clazz){
         return converter.parseObject(text, clazz);
+    }
+
+    public static  <T> T parseObject(String text, Type type){
+        return converter.parseObject(text, type);
     }
 
     public static <T> List<T> parseArray(String text, Class<T> clazz){

@@ -34,7 +34,7 @@ public class Test {
                     meth="form";
                     result=args[i];
                 }
-                if(parameter.isAnnotationPresent(RequestJson.class)){
+                if(parameter.isAnnotationPresent(RequestBody.class)){
                     meth="json";
                     result=args[i];
                 }else {
