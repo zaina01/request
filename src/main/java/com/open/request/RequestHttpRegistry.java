@@ -15,7 +15,6 @@ public class RequestHttpRegistry {
 
     public <T> T getRequest(Class<T> type, Requests requests) {
         RequestHttpProxyFactory<T> requestHttpProxyFactory = (RequestHttpProxyFactory<T>) knownHttps.get(type);
-
         return requestHttpProxyFactory.newInstance(requests);
     }
 

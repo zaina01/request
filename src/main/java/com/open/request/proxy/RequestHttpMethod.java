@@ -1,17 +1,12 @@
 package com.open.request.proxy;
 
-import com.open.request.Configuration;
-import com.open.request.HttpStatement;
-import com.open.request.ParamResolver;
-import com.open.request.Requests;
+import com.open.request.*;
 import com.open.request.annotation.RequestAsync;
 import com.open.request.enums.RequestType;
-import com.open.request.utils.HeadersUtil;
 
 import java.lang.reflect.*;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class RequestHttpMethod {
@@ -82,8 +77,9 @@ public class RequestHttpMethod {
         private final Class<?> returnType;
         private final Class<?> actualType;
         private final ParamResolver paramResolver;
-
+        private final Class<?>  mapperInterface;
         public MethodSignature(Class<?> mapperInterface, Method method) {
+            this.mapperInterface = mapperInterface;
             Type type = method.getGenericReturnType();
             this.genericReturnType=type;
             RequestAsync annotation = method.getAnnotation(RequestAsync.class);
@@ -143,7 +139,7 @@ public class RequestHttpMethod {
             return paramResolver.bodyBuild(args);
         }
 
-        public HeadersUtil convertArgsToHttpHeaders(Object[] args) {
+        public HttpHeaders convertArgsToHttpHeaders(Object[] args) {
             return paramResolver.HeadersBuild(args);
         }
 
@@ -157,6 +153,9 @@ public class RequestHttpMethod {
 
         public Type getGenericReturnType() {
             return genericReturnType;
+        }
+        public Class<?> getMapperInterface() {
+            return mapperInterface;
         }
     }
 }

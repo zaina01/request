@@ -2,11 +2,9 @@ package com.open.request;
 
 import com.open.request.annotation.*;
 import com.open.request.json.Json;
-import com.open.request.utils.HeadersUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -43,7 +41,16 @@ public class ParamResolver {
         }
         String name;
         for (int paramIndex = 0; paramIndex < paramCount; paramIndex++) {
-            for (Annotation annotation : parameterAnnotations[paramIndex]) {
+            Annotation[] parameterAnnotation = parameterAnnotations[paramIndex];
+            if (parameterAnnotation.length==0){
+                Parameter parameter = parameters[paramIndex];
+                if (!parameter.isNamePresent()) throw new  IllegalArgumentException("获取方法参数名称失败，可能是因为未启用编译参数-parameters");
+                hasParamsAnnotation = true;
+                name=parameterNames[paramIndex];
+                map.put(paramIndex,name);
+                continue;
+            }
+            for (Annotation annotation : parameterAnnotation) {
                 if (annotation instanceof RequestForm) {
                     hasRequestFormAnnotation = true;
                     map.put(-1, String.valueOf(paramIndex));
@@ -56,8 +63,9 @@ public class ParamResolver {
                     hasHeadersAnnotation=true;
                     map.put(-2, String.valueOf(paramIndex));
                     break;
-                } else if (annotation instanceof Param) {
-                    name = ((Param) annotation).name();
+                } else if (annotation instanceof Param param) {
+                    name = param.name();
+                    if ("".equals(name)) name=param.value();
                     if ("".equals(name)) {
                         name=parameterNames[paramIndex];
                     }
@@ -72,7 +80,6 @@ public class ParamResolver {
         }
         names = Collections.unmodifiableSortedMap(map);
     }
-
     public String[] getNames() {
         return names.values().toArray(new String[0]);
     }
@@ -183,17 +190,17 @@ public class ParamResolver {
         }
         return HttpRequest.BodyPublishers.noBody();
     }
-    public HeadersUtil HeadersBuild(Object[] args) {
+    public HttpHeaders HeadersBuild(Object[] args) {
         if (!hasHeadersAnnotation) {
             return null;
         }
         String s = names.get(-2);
         int paramIndex = Integer.parseInt(s);
         Object arg = args[paramIndex];
-        if (arg instanceof HeadersUtil headersUtil){
-            return headersUtil;
+        if (arg instanceof HttpHeaders httpHeaders){
+            return httpHeaders;
         }else {
-            throw new RuntimeException("Headers注解需要放在HeadersUtil对象上使用");
+            throw new RuntimeException("Headers注解需要放在HttpHeaders对象上使用");
         }
     }
 }

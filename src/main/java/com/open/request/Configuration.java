@@ -3,6 +3,7 @@ package com.open.request;
 import com.open.request.handler.ResultHandler;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,7 +14,7 @@ public class Configuration {
     protected final Map<String, HttpStatement> httpStatements=new ConcurrentHashMap<>();
 
     protected final Map<String, ResultHandler<?>>  resultHandlers=new ConcurrentHashMap<>();
-
+    protected final Map<Class<?>, HttpHeaders> httpDefaultHeaders = new ConcurrentHashMap<>();
     public void addHttpStatement(HttpStatement httpStatement) {
         httpStatements.put(httpStatement.getId(), httpStatement);
     }
@@ -32,7 +33,30 @@ public class Configuration {
         return getRequest(type,new Requests(this));
     }
     public <T> T getRequest(Class<T> type, Requests requests) {
-        return requestHttpRegistry.getRequest(type, requests);
+        T request = requestHttpRegistry.getRequest(type, requests);
+        if (!hasHttpDefaultHeaders(type)){
+            for (Method method : type.getMethods()) {
+                if (method.isDefault()&&method.getReturnType().isAssignableFrom(HttpHeaders.class)&&method.getParameterTypes().length==0){
+                    try {
+                        addHttpDefaultHeader(type,(HttpHeaders) method.invoke(request));
+                        break;
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+        }
+        return request;
+    }
+    public void addHttpDefaultHeader(Class<?> type, HttpHeaders httpDefaultHeader) {
+        httpDefaultHeaders.put(type, httpDefaultHeader);
+    }
+    public boolean hasHttpDefaultHeaders(Class<?> type) {
+        return httpDefaultHeaders.containsKey(type);
+    }
+    public HttpHeaders getHttpDefaultHeaders(Class<?> type) {
+        return httpDefaultHeaders.get(type);
     }
     public ResultHandler<?> getResultHandler(Class<? extends ResultHandler<?>> resultHandlerClass) {
         return resultHandlers.computeIfAbsent(resultHandlerClass.getName(), _ -> {

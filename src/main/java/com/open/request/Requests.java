@@ -4,7 +4,6 @@ import com.open.request.enums.RequestType;
 import com.open.request.handler.ResultHandler;
 import com.open.request.json.Json;
 import com.open.request.proxy.RequestHttpMethod;
-import com.open.request.utils.HeadersUtil;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -12,8 +11,6 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.List;
 
 public class Requests {
     private final Configuration configuration;
@@ -118,10 +115,12 @@ public class Requests {
     public HttpRequest buildRequest(RequestType requestType, String url, RequestHttpMethod.MethodSignature methodSignature, Object[] args) {
 
         String param = methodSignature.convertArgsToHttpParam(args);
-        HeadersUtil headersUtil = methodSignature.convertArgsToHttpHeaders(args);
+        HttpHeaders httpHeaders = methodSignature.convertArgsToHttpHeaders(args);
+        HttpHeaders httpDefaultHeaders = configuration.getHttpDefaultHeaders(methodSignature.getMapperInterface());
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
         requestBuilder.uri(URI.create("".equals(url) ? url : url + param));
-        if (headersUtil != null) headersUtil.build(requestBuilder);
+        if (httpDefaultHeaders!=null) httpDefaultHeaders.build(requestBuilder);
+        if (httpHeaders != null) httpHeaders.build(requestBuilder);
         switch (requestType) {
             case Post -> {
                 HttpRequest.BodyPublisher bodyPublisher = methodSignature.convertArgsToHttpBodyPublisher(args);
