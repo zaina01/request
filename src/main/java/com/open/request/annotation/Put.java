@@ -1,6 +1,5 @@
 package com.open.request.annotation;
 
-import com.open.request.enums.RequestType;
 import com.open.request.handler.DefaultResultHandler;
 import com.open.request.handler.ResultHandler;
 

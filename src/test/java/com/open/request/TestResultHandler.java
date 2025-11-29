@@ -3,13 +3,11 @@ package com.open.request;
 import com.open.request.handler.DefaultResultHandler;
 import com.open.request.handler.ResultHandler;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.InvocationInterceptor;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,7 +32,7 @@ public class TestResultHandler {
         Configuration config = new Configuration();
         config.addRequest(TestHttp.class);
         TestHttp request = config.getRequest(TestHttp.class);
-        String user = request.get("1", "2",HttpHeaders.newBuilder());
+        String user = request.get("2",HttpHeaders.newBuilder());
         System.out.println("user:" + user);
     }
 
@@ -58,7 +56,7 @@ public class TestResultHandler {
         httpHeaders2.setHeader("test", "test2");
 //        httpHeaders2.allowedOverwrite();
         httpHeaders2.setHeader("ts", "ffff");
-        String a = request.get("3", "4", httpHeaders2);
+        String a = request.get( "3", httpHeaders2);
         System.out.println(a);
 
     }

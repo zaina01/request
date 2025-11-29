@@ -175,25 +175,31 @@ public class ParamResolver {
             sb.delete(sb.length() - 1, sb.length());
             return HttpRequest.BodyPublishers.ofString(sb.toString());
         } else if (hasRequestBodyAnnotation) {
-            if (arg instanceof String body) {
-                return HttpRequest.BodyPublishers.ofString(body);
-            } else if (arg instanceof byte[] body) {
-                return HttpRequest.BodyPublishers.ofByteArray(body);
-            } else if (arg instanceof File file) {
-                try {
-                    return HttpRequest.BodyPublishers.ofFile(file.toPath());
-                } catch (FileNotFoundException e) {
-                    throw new RuntimeException(e);
+            switch (arg) {
+                case String body -> {
+                    return HttpRequest.BodyPublishers.ofString(body);
                 }
-            } else if (arg instanceof Path path) {
-                try {
-                    return HttpRequest.BodyPublishers.ofFile(path);
-                } catch (FileNotFoundException e) {
-                    throw new RuntimeException(e);
+                case byte[] body -> {
+                    return HttpRequest.BodyPublishers.ofByteArray(body);
                 }
-            } else {
-                String value = Json.toJSONString(arg);
-                return HttpRequest.BodyPublishers.ofString(String.valueOf(value));
+                case File file -> {
+                    try {
+                        return HttpRequest.BodyPublishers.ofFile(file.toPath());
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                case Path path -> {
+                    try {
+                        return HttpRequest.BodyPublishers.ofFile(path);
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                default -> {
+                    String value = Json.toJSONString(arg);
+                    return HttpRequest.BodyPublishers.ofString(String.valueOf(value));
+                }
             }
         }
         return HttpRequest.BodyPublishers.noBody();

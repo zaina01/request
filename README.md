@@ -7,7 +7,7 @@
 - 使用Java语言编写
 - 使用JDK的`HttpClient`实现网络请求
 - 支持同步和异步请求
-- 支持多种JSON解析库（Fastjson、Fastjson2、Jackson）
+- 支持多种JSON解析库（Fastjson2、Jackson）
 
 #### 功能特性
 - 支持GET、POST、PUT、DELETE等常见HTTP方法
@@ -15,21 +15,24 @@
 - 支持自定义结果处理器
 - 支持接口式声明请求（通过注解）
 - 支持多种JSON序列化/反序列化工具
+- 支持接口返回值为嵌套复杂泛型
+- 支持定义默认请求头信息
 
 #### 使用说明
 
 1. 在接口上使用 `@Request("请求地址")` 注解指定请求的基础URL。
 2. 在接口方法上使用 `@Get`、`@Post`、`@Put`、`@Delete` 等注解指定请求方式。
-3. 方法参数可以使用 `@RequestJson`、`@Param`、`@RequestForm`、`@Headers` 等注解指定参数类型。
+3. 方法参数可以使用 `@RequestBody`、`@Param`、`@RequestForm`、`@Headers` 等注解指定参数类型。
 4. 接口返回值自动适配处理。
 5. 创建 `Configuration` 实例并注册请求接口：
+
    ```java
    Configuration config = new Configuration();
-   config.addRequest(接口.class);
+   config.addRequest(TestHttp.class);
    ```
 6. 获取接口的实现类：
    ```java
-   接口实例 = config.getRequest(接口.class);
+   TestHttp testHttp = config.getRequest(TestHttp.class);
    ```
 7. 调用接口方法即可发送请求。
 
@@ -42,7 +45,7 @@ public interface MyApi {
     String getData(@Param("id") int id);
     
     @Post
-    String postData(@RequestJson User user);
+    String postData(@RequestBody User user);
 }
 
 public class Main {
@@ -62,24 +65,38 @@ public class Main {
     }
 }
 ```
+#### 默认请求头定义
+接口中定义静态方法返回一个HttpHeaders对象
+
+```java
+@Request("https://xxxx.com")
+public interface TestHttp {
+    static HttpHeaders header() {
+        return HttpHeaders.newBuilder()
+                .setHeader("sign","xxxxxxxxxxxxxxxx")
+                .setHeader("content-type","application/json");
+    }
+    @Get
+    String get(@Param("query") String query);
+}
+```
 
 #### 支持的注解
-| 注解名 | 用途 |
-|--------|------|
-| `@Request` | 标注在接口上，指定请求的基础URL |
-| `@Get` | 标注在方法上，表示使用GET请求 |
-| `@Post` | 标注在方法上，表示使用POST请求 |
-| `@Put` | 标注在方法上，表示使用PUT请求 |
-| `@Delete` | 标注在方法上，表示使用DELETE请求 |
-| `@RequestJson` | 标注在方法参数上，表示该参数为JSON请求体 |
-| `@Param` | 标注在方法参数上，表示该参数为URL查询参数 |
-| `@RequestForm` | 标注在方法参数上，表示该参数为表单请求体 |
-| `@Headers` | 标注在方法参数上，表示该参数为请求头 |
-| `@RequestAsync` | 标注在方法上，表示该请求为异步请求 |
+| 注解名 | 用途                                              |
+|--------|-------------------------------------------------|
+| `@Request` | 标注在接口上，指定请求的基础URL                               |
+| `@Get` | 标注在方法上，表示使用GET请求                                |
+| `@Post` | 标注在方法上，表示使用POST请求                               |
+| `@Put` | 标注在方法上，表示使用PUT请求                                |
+| `@Delete` | 标注在方法上，表示使用DELETE请求                             |
+| `@RequestBody` | 标注在方法参数上，自动识别ofString(json),ofByteArray,ofFile等 |
+| `@Param` | 标注在方法参数上，表示该参数为URL查询参数                          |
+| `@RequestForm` | 标注在方法参数上，表示该参数为表单请求体                            |
+| `@Headers` | 标注在方法参数上，表示该参数为请求头                              |
+| `@RequestAsync` | 标注在方法上，表示该请求为异步请求                               |
 
 #### JSON处理
 支持以下JSON库：
-- Fastjson
 - Fastjson2
 - Jackson
 
@@ -91,7 +108,7 @@ public class Main {
 
 #### 依赖
 - JDK 11+
-- Fastjson、Fastjson2 或 Jackson（可选）
+- Fastjson2 或 Jackson
 
 #### 许可证
-MIT License
+AGPL-3.0 license

@@ -38,7 +38,7 @@ public class RequestHttpAnnotationBuilder {
         if (url.isEmpty()) {
             url = annotation.value();
         }
-        HttpClient httpClient = null;
+        HttpClient httpClient;
         if (annotation.openSession()) {
             CookieManager cookieManager = new CookieManager();
             cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
@@ -107,31 +107,37 @@ public class RequestHttpAnnotationBuilder {
         private final boolean enableDefaultHeaders;
         AnnotationWrapper(Annotation annotation) {
             this.annotation = annotation;
-            if (annotation instanceof Post post) {
-                url = post.value().isEmpty() ? post.url() : post.value();
-                requestType = RequestType.Post;
-                resultHandlerClass = post.handler();
-                enableDefaultHeaders=post.enableDefaultHeaders();
-            } else if (annotation instanceof Get get) {
-                url = get.value().isEmpty() ? get.url() : get.value();
-                requestType = RequestType.Get;
-                resultHandlerClass = get.handler();
-                enableDefaultHeaders=get.enableDefaultHeaders();
-            } else if (annotation instanceof Put put) {
-                url = put.value().isEmpty() ? put.url() : put.value();
-                requestType = RequestType.Put;
-                resultHandlerClass = put.handler();
-                enableDefaultHeaders=put.enableDefaultHeaders();
-            } else if (annotation instanceof Delete delete) {
-                url = delete.value().isEmpty() ? delete.url() : delete.value();
-                requestType = RequestType.Delete;
-                resultHandlerClass = delete.handler();
-                enableDefaultHeaders=delete.enableDefaultHeaders();
-            } else {
-                requestType = RequestType.UNKNOWN;
-                resultHandlerClass = null;
-                url = null;
-                enableDefaultHeaders = false;
+            switch (annotation) {
+                case Post post -> {
+                    url = post.value().isEmpty() ? post.url() : post.value();
+                    requestType = RequestType.Post;
+                    resultHandlerClass = post.handler();
+                    enableDefaultHeaders = post.enableDefaultHeaders();
+                }
+                case Get get -> {
+                    url = get.value().isEmpty() ? get.url() : get.value();
+                    requestType = RequestType.Get;
+                    resultHandlerClass = get.handler();
+                    enableDefaultHeaders = get.enableDefaultHeaders();
+                }
+                case Put put -> {
+                    url = put.value().isEmpty() ? put.url() : put.value();
+                    requestType = RequestType.Put;
+                    resultHandlerClass = put.handler();
+                    enableDefaultHeaders = put.enableDefaultHeaders();
+                }
+                case Delete delete -> {
+                    url = delete.value().isEmpty() ? delete.url() : delete.value();
+                    requestType = RequestType.Delete;
+                    resultHandlerClass = delete.handler();
+                    enableDefaultHeaders = delete.enableDefaultHeaders();
+                }
+                case null, default -> {
+                    requestType = RequestType.UNKNOWN;
+                    resultHandlerClass = null;
+                    url = null;
+                    enableDefaultHeaders = false;
+                }
             }
         }
 
