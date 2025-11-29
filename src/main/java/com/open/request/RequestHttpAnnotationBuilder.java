@@ -6,7 +6,10 @@ import com.open.request.enums.RequestType;
 import com.open.request.handler.ResultHandler;
 
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.http.HttpClient;
@@ -47,10 +50,28 @@ public class RequestHttpAnnotationBuilder {
             if (!canHaveStatement(method)) {
                 continue;
             }
+            if (Modifier.isStatic(method.getModifiers())) {
+                setHttpDefaultHeader(method);
+                continue;
+            }
             parseStatement(method, url, httpClient);
         }
     }
-
+    private void setHttpDefaultHeader(Method method) {
+        if (!(method.getReturnType().isAssignableFrom(HttpHeaders.class)&&method.getParameterTypes().length==0)) {
+            return;
+        }
+        if (!configuration.hasHttpDefaultHeaders(type)){
+            try {
+                MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(type, MethodHandles.lookup());
+                MethodHandle methodHandle = lookup.unreflect(method);
+                HttpHeaders headers = (HttpHeaders) methodHandle.invokeExact();
+                configuration.addHttpDefaultHeader(type,headers);
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
     private static boolean canHaveStatement(Method method) {
         return !method.isBridge() && !method.isDefault();
     }
@@ -73,8 +94,9 @@ public class RequestHttpAnnotationBuilder {
         } else {
             url += annotationWrapper.url;
         }
+
         String httpStatementId = type.getName() + "." + method.getName();
-        assistant.addHttpStatement(httpStatementId, annotationWrapper.requestType, httpClient, url, async, annotationWrapper.resultHandlerClass);
+        assistant.addHttpStatement(httpStatementId, annotationWrapper.requestType, httpClient, url, async, annotationWrapper.resultHandlerClass,annotationWrapper.enableDefaultHeaders);
     }
 
     private static class AnnotationWrapper {
@@ -82,29 +104,34 @@ public class RequestHttpAnnotationBuilder {
         private final String url;
         private final RequestType requestType;
         private final Class<? extends ResultHandler<?>> resultHandlerClass;
-
+        private final boolean enableDefaultHeaders;
         AnnotationWrapper(Annotation annotation) {
             this.annotation = annotation;
             if (annotation instanceof Post post) {
                 url = post.value().isEmpty() ? post.url() : post.value();
                 requestType = RequestType.Post;
                 resultHandlerClass = post.handler();
+                enableDefaultHeaders=post.enableDefaultHeaders();
             } else if (annotation instanceof Get get) {
                 url = get.value().isEmpty() ? get.url() : get.value();
                 requestType = RequestType.Get;
                 resultHandlerClass = get.handler();
+                enableDefaultHeaders=get.enableDefaultHeaders();
             } else if (annotation instanceof Put put) {
                 url = put.value().isEmpty() ? put.url() : put.value();
                 requestType = RequestType.Put;
                 resultHandlerClass = put.handler();
+                enableDefaultHeaders=put.enableDefaultHeaders();
             } else if (annotation instanceof Delete delete) {
                 url = delete.value().isEmpty() ? delete.url() : delete.value();
                 requestType = RequestType.Delete;
                 resultHandlerClass = delete.handler();
+                enableDefaultHeaders=delete.enableDefaultHeaders();
             } else {
                 requestType = RequestType.UNKNOWN;
                 resultHandlerClass = null;
                 url = null;
+                enableDefaultHeaders = false;
             }
         }
 

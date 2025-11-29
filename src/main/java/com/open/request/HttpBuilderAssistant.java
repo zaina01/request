@@ -14,9 +14,9 @@ public class HttpBuilderAssistant {
     }
 
 
-    public HttpStatement addHttpStatement(String id, RequestType requestType, HttpClient httpClient, String url, boolean async, Class<? extends ResultHandler<?>> resultHandlerClass) {
+    public HttpStatement addHttpStatement(String id, RequestType requestType, HttpClient httpClient, String url, boolean async, Class<? extends ResultHandler<?>> resultHandlerClass, boolean enableDefaultHeaders) {
         HttpStatement.Builder builder = new HttpStatement.Builder(id, requestType, httpClient, url);
-        HttpStatement build = builder.async(async).ResultHandler(resultHandlerClass).build();
+        HttpStatement build = builder.async(async).resultHandler(resultHandlerClass).enableDefaultHeaders(enableDefaultHeaders).build();
         configuration.addHttpStatement(build);
         return build;
     }

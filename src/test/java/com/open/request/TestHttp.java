@@ -9,11 +9,10 @@ import java.util.List;
 
 @Request("https://www.baidu.com")
 public interface TestHttp {
-    default HttpHeaders header() {
-        return HttpHeaders.newBuilder().setHeader("ts","bbb")
-                .setHeader("ts","ccc")
+    static HttpHeaders header() {
+        return HttpHeaders.newBuilder()
                 .setHeader("ts","ddd");
     }
     @Get
-    String get( String a, String b, @Headers HttpHeaders headers);
+    String get(@Param("a") String a, @Param("b") String b,HttpHeaders headers);
 }

@@ -3,7 +3,6 @@ package com.open.request;
 import com.open.request.handler.ResultHandler;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,21 +32,7 @@ public class Configuration {
         return getRequest(type,new Requests(this));
     }
     public <T> T getRequest(Class<T> type, Requests requests) {
-        T request = requestHttpRegistry.getRequest(type, requests);
-        if (!hasHttpDefaultHeaders(type)){
-            for (Method method : type.getMethods()) {
-                if (method.isDefault()&&method.getReturnType().isAssignableFrom(HttpHeaders.class)&&method.getParameterTypes().length==0){
-                    try {
-                        addHttpDefaultHeader(type,(HttpHeaders) method.invoke(request));
-                        break;
-                    } catch (IllegalAccessException | InvocationTargetException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-
-        }
-        return request;
+        return requestHttpRegistry.getRequest(type, requests);
     }
     public void addHttpDefaultHeader(Class<?> type, HttpHeaders httpDefaultHeader) {
         httpDefaultHeaders.put(type, httpDefaultHeader);

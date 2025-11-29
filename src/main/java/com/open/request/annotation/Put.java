@@ -1,5 +1,6 @@
 package com.open.request.annotation;
 
+import com.open.request.enums.RequestType;
 import com.open.request.handler.DefaultResultHandler;
 import com.open.request.handler.ResultHandler;
 
@@ -14,4 +15,5 @@ public @interface Put {
     String url() default "";
     String value() default "";
     Class<? extends ResultHandler<?>>  handler() default DefaultResultHandler.class;
+    boolean enableDefaultHeaders() default true;
 }

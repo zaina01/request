@@ -41,7 +41,7 @@ public class Requests {
 
     public Object execute(String statement, RequestHttpMethod.MethodSignature methodSignature, Object[] args, RequestType requestType) {
         HttpStatement httpStatement = configuration.getHttpStatement(statement);
-        HttpRequest httpRequest = buildRequest(requestType, httpStatement.getUrl(), methodSignature, args);
+        HttpRequest httpRequest = buildRequest(requestType, httpStatement.getUrl(), methodSignature, args,httpStatement.getEnableDefaultHeaders());
 //        HttpResponse.BodyHandler<?> bodyHandler = buildBodyHandler(methodSignature.getActualType());
         ResultHandler<?> resultHandler = configuration.getResultHandler(httpStatement.getResultHandlerClass());
         if (httpStatement.isAsync()){
@@ -112,14 +112,16 @@ public class Requests {
         throw new RuntimeException("转换结果失败 需要的类型" + returnType + ",提供的result类型" + result.getClass());
     }
 
-    public HttpRequest buildRequest(RequestType requestType, String url, RequestHttpMethod.MethodSignature methodSignature, Object[] args) {
+    public HttpRequest buildRequest(RequestType requestType, String url, RequestHttpMethod.MethodSignature methodSignature, Object[] args,boolean enableDefaultHeaders) {
 
         String param = methodSignature.convertArgsToHttpParam(args);
         HttpHeaders httpHeaders = methodSignature.convertArgsToHttpHeaders(args);
         HttpHeaders httpDefaultHeaders = configuration.getHttpDefaultHeaders(methodSignature.getMapperInterface());
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
         requestBuilder.uri(URI.create("".equals(url) ? url : url + param));
-        if (httpDefaultHeaders!=null) httpDefaultHeaders.build(requestBuilder);
+        if (enableDefaultHeaders){
+            if (httpDefaultHeaders!=null) httpDefaultHeaders.build(requestBuilder);
+        }
         if (httpHeaders != null) httpHeaders.build(requestBuilder);
         switch (requestType) {
             case Post -> {

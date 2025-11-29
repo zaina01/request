@@ -13,6 +13,7 @@ public class HttpStatement {
     private String url;
     private boolean async;
     private Class<? extends ResultHandler<?>> resultHandlerClass;
+    private boolean enableDefaultHeaders;
     HttpStatement(){}
 
     public static class Builder{
@@ -32,8 +33,12 @@ public class HttpStatement {
             httpStatement.async = async;
             return this;
         }
-        public Builder ResultHandler(Class<? extends ResultHandler<?>> resultHandlerClass){
+        public Builder resultHandler(Class<? extends ResultHandler<?>> resultHandlerClass){
             httpStatement.resultHandlerClass=resultHandlerClass;
+            return this;
+        }
+        public Builder enableDefaultHeaders(boolean enableDefaultHeaders){
+            httpStatement.enableDefaultHeaders = enableDefaultHeaders;
             return this;
         }
         public HttpStatement build(){
@@ -59,6 +64,9 @@ public class HttpStatement {
         return resultHandlerClass;
     }
 
+    public boolean getEnableDefaultHeaders() {
+        return enableDefaultHeaders;
+    }
     public boolean isAsync() {
         return async;
     }

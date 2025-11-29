@@ -9,10 +9,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -57,14 +54,12 @@ public class TestResultHandler {
         Configuration config = new Configuration();
         config.addRequest(testHttpClass);
         TestHttp request = config.getRequest(testHttpClass);
-        HttpHeaders httpHeaders = HttpHeaders.newBuilder();
-//        httpHeaders.setHeader("test", "test");
-//        String string = request.get("1", "2", httpHeaders);
         HttpHeaders httpHeaders2 = HttpHeaders.newBuilder();
         httpHeaders2.setHeader("test", "test2");
 //        httpHeaders2.allowedOverwrite();
         httpHeaders2.setHeader("ts", "ffff");
         String a = request.get("3", "4", httpHeaders2);
         System.out.println(a);
+
     }
 }
