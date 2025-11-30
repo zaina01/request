@@ -60,4 +60,13 @@ public class TestResultHandler {
         System.out.println(a);
 
     }
+
+    @Test
+    void testURLPathVariable(){
+        Configuration config = new Configuration();
+        config.addRequest(TestHttp.class);
+        TestHttp request = config.getRequest(TestHttp.class);
+        String string = request.testPathVariable("1");
+        System.out.println(string);
+    }
 }

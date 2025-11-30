@@ -1,8 +1,6 @@
 package com.open.request;
 
-import com.open.request.annotation.Get;
-import com.open.request.annotation.Param;
-import com.open.request.annotation.Request;
+import com.open.request.annotation.*;
 
 @Request("https://www.baidu.com")
 public interface TestHttp {
@@ -12,4 +10,8 @@ public interface TestHttp {
     }
     @Get
     String get(@Param("query") String query,HttpHeaders headers);
+
+
+    @Post("/{query}")
+    String testPathVariable(@PathVariable("query") String query);
 }

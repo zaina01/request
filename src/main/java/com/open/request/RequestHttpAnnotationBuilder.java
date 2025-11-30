@@ -94,11 +94,20 @@ public class RequestHttpAnnotationBuilder {
         } else {
             url += annotationWrapper.url;
         }
-
+        url=urlPathVariableHandle(url);
         String httpStatementId = type.getName() + "." + method.getName();
         assistant.addHttpStatement(httpStatementId, annotationWrapper.requestType, httpClient, url, async, annotationWrapper.resultHandlerClass,annotationWrapper.enableDefaultHeaders);
     }
+    private String urlPathVariableHandle(String originalUrl){
+        StringBuilder sb = new StringBuilder();
 
+        for (char c : originalUrl.toCharArray()) {
+            if (!Character.isWhitespace(c)){
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
     private static class AnnotationWrapper {
         private final Annotation annotation;
         private final String url;

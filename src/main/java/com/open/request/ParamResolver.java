@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class ParamResolver {
-    private final SortedMap<Integer, String> names;
+    private final SortedMap<String, List<ParameterMapping>> names;
     private boolean hasParamsAnnotation;
     private boolean hasRequestFormAnnotation;
     private boolean hasRequestBodyAnnotation;
@@ -32,13 +32,13 @@ public class ParamResolver {
     public ParamResolver(Method method) {
 //        Class<?>[] parameterTypes = method.getParameterTypes();
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-        SortedMap<Integer, String> map = new TreeMap<>();
+        SortedMap<String, List<ParameterMapping>> map = new TreeMap<>();
         int paramCount = parameterAnnotations.length;
         Parameter[] parameters = method.getParameters();
-        String[] parameterNames = new String[parameters.length];
-        for (int i = 0; i < paramCount; i++) {
-            parameterNames[i] = parameters[i].getName();
-        }
+//        String[] parameterNames = new String[parameters.length];
+//        for (int i = 0; i < paramCount; i++) {
+//            parameterNames[i] = parameters[i].getName();
+//        }
         String name;
         for (int paramIndex = 0; paramIndex < paramCount; paramIndex++) {
             Annotation[] parameterAnnotation = parameterAnnotations[paramIndex];
@@ -46,43 +46,43 @@ public class ParamResolver {
                 Parameter parameter = parameters[paramIndex];
                 if (parameter.getType().isAssignableFrom(HttpHeaders.class)) {
                     hasHeadersAnnotation = true;
-                    map.put(-2, String.valueOf(paramIndex));
+                    map.put("headers", new ArrayList<>(List.of(new ParameterMapping(paramIndex, "headers"))));
                 } else {
-
-                    if (!parameter.isNamePresent())
-                        throw new IllegalArgumentException("获取方法参数名称失败，可能是因为未启用编译参数-parameters");
-                    hasParamsAnnotation = true;
-                    name = parameterNames[paramIndex];
-                    map.put(paramIndex, name);
-
+                    name = getParameterName(parameter);
+                    map.computeIfAbsent("params", _ -> new ArrayList<>()).add(new ParameterMapping(paramIndex, name));
                 }
                 continue;
             }
             for (Annotation annotation : parameterAnnotation) {
                 if (annotation instanceof RequestForm) {
                     hasRequestFormAnnotation = true;
-                    map.put(-1, String.valueOf(paramIndex));
+                    map.put("body", new ArrayList<>(List.of(new ParameterMapping(paramIndex, "requestForm"))));
                     break;
                 } else if (annotation instanceof RequestBody) {
                     hasRequestBodyAnnotation = true;
-                    map.put(-1, String.valueOf(paramIndex));
+                    map.put("body", new ArrayList<>(List.of(new ParameterMapping(paramIndex, "requestBody"))));
                     break;
                 } else if (annotation instanceof Headers) {
                     hasHeadersAnnotation = true;
-                    map.put(-2, String.valueOf(paramIndex));
+                    map.put("headers", new ArrayList<>(List.of(new ParameterMapping(paramIndex, "headers"))));
                     break;
                 } else if (annotation instanceof Param param) {
                     name = param.name();
                     if ("".equals(name)) name = param.value();
                     if ("".equals(name)) {
-                        name = parameterNames[paramIndex];
+                        name = getParameterName(parameters[paramIndex]);
                     }
                     hasParamsAnnotation = true;
-                    map.put(paramIndex, name);
+                    map.computeIfAbsent("params", _ -> new ArrayList<>()).add(new ParameterMapping(paramIndex, name));
                     break;
-                } else if (annotation instanceof PathVariable) {
+                } else if (annotation instanceof PathVariable pathVariable) {
                     hasPathVariableAnnotation = true;
-                    //todo 等待实现
+                    name = pathVariable.name();
+                    if ("".equals(name)) name = pathVariable.value();
+                    if ("".equals(name)) {
+                        name = getParameterName(parameters[paramIndex]);
+                    }
+                    map.computeIfAbsent("pathVariable", _ -> new ArrayList<>()).add(new ParameterMapping(paramIndex, name));
                 }
             }
         }
@@ -97,16 +97,38 @@ public class ParamResolver {
         return names.keySet().toArray(new Integer[0]);
     }
 
+    public String pathVariableBuild(String url, Object[] args) {
+        if (!hasPathVariableAnnotation) {
+            return url;
+        }
+        List<ParameterMapping> parameterMappingList = names.getOrDefault("pathVariable", new ArrayList<>());
+        for (ParameterMapping parameterMapping : parameterMappingList) {
+            Object arg = args[parameterMapping.paramIndex()];
+            String paramName = parameterMapping.paramName();
+            Class<?> aClass = arg.getClass();
+            if (WRAPPER_TYPES.contains(aClass) || aClass.isPrimitive() || aClass.isAssignableFrom(String.class)) {
+                String value = String.valueOf(arg);
+                url = url.replace("{" + paramName + "}", value);
+            } else {
+                throw new RuntimeException("pathVariable注解只支持基本类型、包装类、字符串类型");
+            }
+        }
+        if (url.contains("{")|| url.contains("}")) {
+            throw new IllegalArgumentException("pathVariable路径参数处理了"+parameterMappingList.size()+"个后 url参数中却还存在未被替换的花括号");
+        }
+        return url;
+    }
+
     public String urlBuild(Object[] args) {
         if (!hasParamsAnnotation) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
         sb.append("?");
-        Integer[] paramIndexList = this.getParamIndexList();
-        Arrays.stream(paramIndexList).filter(paramIndex -> paramIndex > -1).forEach(paramIndex -> {
-            String s = names.get(paramIndex);
-            Object arg = args[paramIndex];
+        List<ParameterMapping> params = names.getOrDefault("params", new ArrayList<>());
+        params.forEach(parameterMapping -> {
+            String paramName = parameterMapping.paramName();
+            Object arg = args[parameterMapping.paramIndex()];
             Class<?> aClass = arg.getClass();
             if (aClass.isArray()) {
                 throw new RuntimeException("Param注解不支持数组");
@@ -115,12 +137,12 @@ public class ParamResolver {
                 throw new RuntimeException("Param注解不支持集合");
             }
             if (WRAPPER_TYPES.contains(aClass)) {
-                sb.append(s);
+                sb.append(paramName);
                 sb.append("=");
                 sb.append(URLEncoder.encode(String.valueOf(arg), StandardCharsets.UTF_8));
                 sb.append("&");
             } else if (aClass.isPrimitive() || aClass.isAssignableFrom(String.class)) {
-                sb.append(s);
+                sb.append(paramName);
                 sb.append("=");
                 sb.append(URLEncoder.encode(String.valueOf(arg), StandardCharsets.UTF_8));
                 sb.append("&");
@@ -149,10 +171,20 @@ public class ParamResolver {
         return sb.toString();
     }
 
+    public String getParameterName(Parameter parameter) {
+        if (!parameter.isNamePresent())
+            throw new IllegalArgumentException("获取方法参数名称失败，可能是因为未启用编译参数-parameters");
+        return parameter.getName();
+    }
+
     public HttpRequest.BodyPublisher bodyBuild(Object[] args) {
-        String s = names.get(-1);
-        int paramIndex = Integer.parseInt(s);
-        Object arg = args[paramIndex];
+        List<ParameterMapping> parameterMappingList = names.get("body");
+        if (parameterMappingList == null || parameterMappingList.isEmpty()) {
+            return HttpRequest.BodyPublishers.noBody();
+        }
+        ParameterMapping first = parameterMappingList.getFirst();
+        Integer paramedIndex = first.paramIndex();
+        Object arg = args[paramedIndex];
         Class<?> aClass = arg.getClass();
         if (hasRequestFormAnnotation) {
             StringBuilder sb = new StringBuilder();
@@ -209,9 +241,13 @@ public class ParamResolver {
         if (!hasHeadersAnnotation) {
             return null;
         }
-        String s = names.get(-2);
-        int paramIndex = Integer.parseInt(s);
-        Object arg = args[paramIndex];
+        List<ParameterMapping> parameterMappingList = names.get("headers");
+        if (parameterMappingList == null || parameterMappingList.isEmpty()) {
+            throw new IllegalArgumentException("hasHeadersAnnotation值为true,但从map中获取的parameterMappingList为 " + parameterMappingList);
+        }
+        ParameterMapping first = parameterMappingList.getFirst();
+        Integer paramedIndex = first.paramIndex();
+        Object arg = args[paramedIndex];
         if (arg instanceof HttpHeaders httpHeaders) {
             return httpHeaders;
         } else {

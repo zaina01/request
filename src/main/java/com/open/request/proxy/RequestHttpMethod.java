@@ -134,7 +134,9 @@ public class RequestHttpMethod {
         public String convertArgsToHttpParam(Object[] args) {
             return paramResolver.urlBuild(args);
         }
-
+        public String convertArgsToHttpPathVariable(String url,Object[] args) {
+            return paramResolver.pathVariableBuild(url, args);
+        }
         public HttpRequest.BodyPublisher convertArgsToHttpBodyPublisher(Object[] args) {
             return paramResolver.bodyBuild(args);
         }

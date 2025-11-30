@@ -113,7 +113,7 @@ public class Requests {
     }
 
     public HttpRequest buildRequest(RequestType requestType, String url, RequestHttpMethod.MethodSignature methodSignature, Object[] args,boolean enableDefaultHeaders) {
-
+        url = methodSignature.convertArgsToHttpPathVariable(url, args);
         String param = methodSignature.convertArgsToHttpParam(args);
         HttpHeaders httpHeaders = methodSignature.convertArgsToHttpHeaders(args);
         HttpHeaders httpDefaultHeaders = configuration.getHttpDefaultHeaders(methodSignature.getMapperInterface());
