@@ -7,7 +7,7 @@ import java.net.http.HttpClient;
 
 public class HttpStatement {
     private String id;
-    private Integer timeout;
+    private long timeout;
     private RequestType requestType;
     private HttpClient httpClient;
     private String url;
@@ -25,7 +25,7 @@ public class HttpStatement {
             httpStatement.url = url;
         }
 
-        public Builder timeout(Integer timeout) {
+        public Builder timeout(long timeout) {
             httpStatement.timeout = timeout;
             return this;
         }
@@ -50,7 +50,7 @@ public class HttpStatement {
         return id;
     }
 
-    public Integer getTimeout() {
+    public long getTimeout() {
         return timeout;
     }
     public RequestType getRequestType() {

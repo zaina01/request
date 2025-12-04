@@ -21,7 +21,7 @@ public class RequestHttpProxy<T> implements InvocationHandler {
 
 
     @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    public Object invoke(Object proxy, Method method, Object[] args) {
         try {
             if (Object.class.equals(method.getDeclaringClass())) {
                 return method.invoke(this, args);
@@ -58,7 +58,7 @@ public class RequestHttpProxy<T> implements InvocationHandler {
 
     private record PlainMethodInvoker(RequestHttpMethod httpMethod) implements HttpMethodInvoker {
         @Override
-            public Object invoke(Object proxy, Method method, Object[] args, Requests requests) throws Throwable {
+            public Object invoke(Object proxy, Method method, Object[] args, Requests requests)  {
                 return httpMethod.execute(requests,args);
             }
         }

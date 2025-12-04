@@ -12,6 +12,6 @@ public interface TestHttp {
     String get(@Param("query") String query, HttpHeaders headers);
 
 
-    @Post("/{query}")
+    @Post(value = "/{query}",timeout = 5)
     String testPathVariable(@PathVariable("query") String query);
 }

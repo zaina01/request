@@ -15,4 +15,5 @@ public @interface Post {
     String value() default "";
     Class<? extends ResultHandler<?>>  handler() default DefaultResultHandler.class;
     boolean enableDefaultHeaders() default true;
+    long timeout() default 0;
 }

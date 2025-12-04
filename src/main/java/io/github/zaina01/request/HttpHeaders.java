@@ -24,7 +24,7 @@ public class HttpHeaders {
 
     @SuppressWarnings("UnusedReturnValue")
     public HttpHeaders addHeader(String name, String value) {
-        headersMap.computeIfAbsent(name, k -> new ArrayList<>(1))
+        headersMap.computeIfAbsent(name, _ -> new ArrayList<>(1))
                 .add(value);
         return this;
     }

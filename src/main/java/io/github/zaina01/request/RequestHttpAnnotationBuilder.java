@@ -12,6 +12,7 @@ import java.lang.reflect.Modifier;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -33,6 +34,7 @@ public class RequestHttpAnnotationBuilder {
 
     public void parse() {
         Request annotation = type.getAnnotation(Request.class);
+        long timeout = annotation.timeout();
         String url = annotation.url();
         if (url.isEmpty()) {
             url = annotation.value();
@@ -41,9 +43,9 @@ public class RequestHttpAnnotationBuilder {
         if (annotation.openSession()) {
             CookieManager cookieManager = new CookieManager();
             cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
-            httpClient = HttpClient.newBuilder().cookieHandler(cookieManager).build();
+            httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(annotation.connectTimeout())).cookieHandler(cookieManager).build();
         } else {
-            httpClient = HttpClient.newHttpClient();
+            httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(annotation.connectTimeout())).build();
         }
         for (Method method : type.getMethods()) {
             if (!canHaveStatement(method)) {
@@ -53,7 +55,7 @@ public class RequestHttpAnnotationBuilder {
                 setHttpDefaultHeader(method);
                 continue;
             }
-            parseStatement(method, url, httpClient);
+            parseStatement(method, url, httpClient,timeout);
         }
     }
     private void setHttpDefaultHeader(Method method) {
@@ -75,7 +77,7 @@ public class RequestHttpAnnotationBuilder {
         return !method.isBridge() && !method.isDefault();
     }
 
-    void parseStatement(Method method, String url, HttpClient httpClient) {
+    void parseStatement(Method method, String url, HttpClient httpClient,long timeout) {
         AnnotationWrapper annotationWrapper = null;
         Annotation[] annotations = method.getAnnotations();
         for (Annotation annotation : annotations) {
@@ -94,8 +96,10 @@ public class RequestHttpAnnotationBuilder {
             url += annotationWrapper.url;
         }
         url=urlPathVariableHandle(url);
+
+        if (annotationWrapper.timeout>0) timeout=annotationWrapper.timeout;
         String httpStatementId = type.getName() + "." + method.getName();
-        assistant.addHttpStatement(httpStatementId, annotationWrapper.requestType, httpClient, url, async, annotationWrapper.resultHandlerClass,annotationWrapper.enableDefaultHeaders);
+        assistant.addHttpStatement(httpStatementId, annotationWrapper.requestType, httpClient, url, async, annotationWrapper.resultHandlerClass,annotationWrapper.enableDefaultHeaders,timeout);
     }
     private String urlPathVariableHandle(String originalUrl){
         StringBuilder sb = new StringBuilder();
@@ -113,6 +117,7 @@ public class RequestHttpAnnotationBuilder {
         private final RequestType requestType;
         private final Class<? extends ResultHandler<?>> resultHandlerClass;
         private final boolean enableDefaultHeaders;
+        private final long timeout;
         AnnotationWrapper(Annotation annotation) {
             this.annotation = annotation;
             switch (annotation) {
@@ -121,30 +126,35 @@ public class RequestHttpAnnotationBuilder {
                     requestType = RequestType.Post;
                     resultHandlerClass = post.handler();
                     enableDefaultHeaders = post.enableDefaultHeaders();
+                    timeout=post.timeout();
                 }
                 case Get get -> {
                     url = get.value().isEmpty() ? get.url() : get.value();
                     requestType = RequestType.Get;
                     resultHandlerClass = get.handler();
                     enableDefaultHeaders = get.enableDefaultHeaders();
+                    timeout=get.timeout();
                 }
                 case Put put -> {
                     url = put.value().isEmpty() ? put.url() : put.value();
                     requestType = RequestType.Put;
                     resultHandlerClass = put.handler();
                     enableDefaultHeaders = put.enableDefaultHeaders();
+                    timeout=put.timeout();
                 }
                 case Delete delete -> {
                     url = delete.value().isEmpty() ? delete.url() : delete.value();
                     requestType = RequestType.Delete;
                     resultHandlerClass = delete.handler();
                     enableDefaultHeaders = delete.enableDefaultHeaders();
+                    timeout=delete.timeout();
                 }
                 case null, default -> {
                     requestType = RequestType.UNKNOWN;
                     resultHandlerClass = null;
                     url = null;
                     enableDefaultHeaders = false;
+                    timeout=-1;
                 }
             }
         }

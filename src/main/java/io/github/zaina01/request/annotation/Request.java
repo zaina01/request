@@ -11,4 +11,6 @@ public @interface Request {
     String url() default "";
     String value() default "";
     boolean openSession() default false;
+    long connectTimeout() default 5;
+    long timeout() default 10;
 }
