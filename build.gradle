@@ -4,13 +4,13 @@ plugins {
 }
 
 group = 'io.github.zaina01'
-version = '1.1.5'
+version = '1.1.6'
 publishing {
     publications {
         myLibrary(MavenPublication) {
             groupId = 'io.github.zaina01'
             artifactId = 'request' // 在这里指定自定义的artifactId
-            version = '1.1.5'
+            version = '1.1.6'
             // 指定要发布由Java插件产生的Jar包等内容
             from components.java
             // 如需自定义artifactId，可在此处设置
