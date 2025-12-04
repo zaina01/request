@@ -1,6 +1,5 @@
 package io.github.zaina01.request;
 
-import com.open.request.annotation.*;
 import io.github.zaina01.request.annotation.*;
 
 @Request("https://www.baidu.com")

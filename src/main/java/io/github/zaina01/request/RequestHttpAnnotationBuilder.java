@@ -1,6 +1,5 @@
 package io.github.zaina01.request;
 
-import com.open.request.annotation.*;
 import io.github.zaina01.request.annotation.*;
 import io.github.zaina01.request.enums.RequestType;
 import io.github.zaina01.request.handler.ResultHandler;
@@ -13,7 +12,7 @@ import java.lang.reflect.Modifier;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.http.HttpClient;
-import java.util.*;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

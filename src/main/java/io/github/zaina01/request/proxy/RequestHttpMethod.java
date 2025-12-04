@@ -1,6 +1,5 @@
 package io.github.zaina01.request.proxy;
 
-import com.open.request.*;
 import io.github.zaina01.request.*;
 import io.github.zaina01.request.annotation.RequestAsync;
 import io.github.zaina01.request.enums.RequestType;
